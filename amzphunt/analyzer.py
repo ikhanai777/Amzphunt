@@ -335,7 +335,10 @@ def score_opportunity(
     if niche and niche.low_rated_share >= 0.2:
         opp += 15
         reasons.append(f"{int(niche.low_rated_share * 100)}% of page 1 is under 4 stars - room for a better product")
-    if rating is not None and rating < 4.1:
+    if rating is not None and rating < 3.5:
+        opp -= 10
+        risks.append(f"rated {rating} stars - check reviews for quality/returns problems in this product type")
+    elif rating is not None and rating < 4.1:
         opp += 10
         reasons.append(f"this listing rates {rating} - customers want a better version")
     if detail:

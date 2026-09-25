@@ -100,8 +100,8 @@ class Hunter:
             for source in sources:
                 for page in range(1, pages + 1):
                     items, html = self._fetch_list(source, node, page)
-                    if source == "bestsellers" and page == 1:
-                        html_first = html
+                    if page == 1 and html and not html_first:
+                        html_first = html  # any list page carries the category tree
                     add(items)
                     if not items:
                         break

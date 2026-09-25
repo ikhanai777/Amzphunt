@@ -422,7 +422,10 @@ def parse_product_page(html: str, asin: str = "") -> ProductDetail:
         price=parse_price(_text(price_el)),
         rating=_product_rating(s),
         reviews=parse_count(_text(s.select_one("#acrCustomerReviewText"))),
-        bought_past_month=parse_bought(_text(s.select_one("#social-proofing-faceout-title-tk_bought")) or page_text[:200000]),
+        # Only the product's own badge; carousels on the page carry other ASINs' badges.
+        bought_past_month=parse_bought(_text(s.select_one(
+            "#social-proofing-faceout-title-tk_bought, #socialProofingAsinFaceout_feature_div"
+        ))),
         bsr=parse_bsr(s),
         breadcrumbs=[_text(a) for a in s.select("#wayfinding-breadcrumbs_feature_div li a")],
         seller=seller,
