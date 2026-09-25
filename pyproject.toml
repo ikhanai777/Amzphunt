@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "amzphunt"
+version = "1.0.0"
+description = "Amazon UAE (amazon.ae) product hunter: finds winning products for new sellers."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "requests>=2.28",
+    "beautifulsoup4>=4.11",
+    "lxml>=4.9",
+]
+
+[project.optional-dependencies]
+browser = ["playwright>=1.40"]
+dev = ["pytest>=7"]
+
+[project.scripts]
+amzphunt = "amzphunt.cli:main"
+
+[tool.setuptools]
+packages = ["amzphunt"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
