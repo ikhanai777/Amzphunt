@@ -30,7 +30,7 @@ WEIGHTS = {
 
 VERDICTS = [(72, "WINNER"), (58, "PROMISING"), (45, "RISKY"), (0, "AVOID")]
 
-HARD_STOP_RISKS = ("prohibited", "hazmat", "MOHAP", "food registration", "IP / licensed")
+HARD_STOP_RISKS = ("prohibited", "hazmat", "MOHAP", "MOCCAE", "food registration", "IP / licensed")
 
 _STOP = {
     "a", "an", "and", "the", "of", "with", "for", "in", "on", "to", "by", "from", "pack", "pcs",
@@ -283,6 +283,7 @@ def score_opportunity(
             risks.append(f"one brand holds {int(niche.top_brand_share * 100)}% of page 1")
     else:
         competition = _scale(reviews, st.max_single_listing_reviews, st.ideal_median_reviews)
+        risks.append("no niche search data - competition unverified")
     if reviews > st.max_single_listing_reviews:
         competition *= 0.8
 
@@ -310,7 +311,7 @@ def score_opportunity(
         risks.append("price unknown")
 
     # ---- ease of entry ----
-    flags = risk_flags(f"{title} {' '.join(detail.breadcrumbs) if detail else ''}", category, detail, brand)
+    flags = risk_flags(f"{title} {keyword} {' '.join(detail.breadcrumbs) if detail else ''}", category, detail, brand)
     risks.extend(flags)
     ease = 100.0
     weight = detail.weight_kg if detail else None
@@ -398,6 +399,8 @@ def score_opportunity(
         total = min(total, 50.0)
     if category in AVOID_CATEGORIES:
         total = min(total, 50.0)
+    if niche is None:
+        total = min(total, 71.0)  # never call it a winner without checking page 1
 
     verdict = next(v for threshold, v in VERDICTS if total >= threshold)
     return Opportunity(

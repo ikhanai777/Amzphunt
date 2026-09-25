@@ -7,12 +7,13 @@ each product a score and a verdict (**WINNER / PROMISING / RISKY / AVOID**) alon
 with the reasons behind it.
 
 ```
-$ amzphunt hunt -c kitchen home sports-goods --depth 1 --deep 40
+$ amzphunt hunt --depth 1 --max-subcategories 6 --deep 45     # live run, Sep 2026
 
 #   Verdict    Score  ASIN        AED  Sales/mo  Reviews  Niche med.rev  Profit  Keyword
---  ---------  -----  ----------  ---  --------  -------  -------------  ------  ---------------------
-1   WINNER     79     B09LLS171H  69   111       161      20             20      steel lunch box
-2   PROMISING  72     B0HC3GSFW2  100  102       5        192            35      handheld garment steamer
+--  ---------  -----  ----------  ---  --------  -------  -------------  ------  ----------------------------
+1   WINNER     84     B0GHLX75X3  125  765       212      479            48      wide leg pants
+2   WINNER     80     B0HJ591HV9  90   452       35       35             30      carplay wireless adapter
+3   WINNER     76     B0BJ9MDJK3  60   195       60       18             15      magnetic whiteboard planners
 ...
 Reports: reports/hunt-20260925-2124.html   (visual dashboard)
          reports/hunt-20260925-2124.csv    (spreadsheet)
