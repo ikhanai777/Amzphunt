@@ -227,7 +227,7 @@ def test_hunt_pipeline_end_to_end(tmp_path):
     hunter = Hunter(FakeFetcher(tmp_path), Settings(), history, workers=2, progress=lambda m: None)
     opps = hunter.hunt(["kitchen"], depth=0, pages=1, sources=["bestsellers"], deep=10)
     assert {o.asin for o in opps} == {"B0TESTAAA1", "B0TESTAAA2"}
-    assert opps == sorted(opps, key=lambda o: o.score, reverse=True)
+    assert opps == sorted(opps, key=lambda o: (o.score, o.raw_score), reverse=True)
     assert all(o.keyword for o in opps)
     paths = write_all(opps, tmp_path / "out", {"categories": ["kitchen"]})
     assert all(p.exists() and p.stat().st_size > 0 for p in paths.values())
@@ -243,3 +243,23 @@ def test_offline_mode_uses_cache_only(tmp_path):
         f.get("/dp/B000000000")
     f._write_cache("https://www.amazon.ae/dp/B000000000", "<html>cached</html>")
     assert f.get("/dp/B000000000") == "<html>cached</html>"
+
+
+def test_latest_digest_marks_new_products(tmp_path):
+    import json
+    import os
+
+    from amzphunt.report import summarize_latest
+
+    assert "No reports" in summarize_latest(tmp_path)
+    hunter = Hunter(FakeFetcher(tmp_path), Settings(), None, workers=1, progress=lambda m: None)
+    opps = hunter.hunt(["kitchen"], depth=0, pages=1, sources=["bestsellers"], deep=10)
+    for o in opps:
+        o.verdict = "WINNER"
+    first = write_all(opps[:1], tmp_path / "out", stem="hunt")["json"]
+    os.utime(first, (1, 1))  # make it the older report
+    write_all(opps, tmp_path / "out", stem="hunt-b")
+    md = summarize_latest(tmp_path / "out")
+    assert "[NEW]" in md and opps[1].asin in md
+    data = json.loads(summarize_latest(tmp_path / "out", fmt="json"))
+    assert {i["asin"]: i["new"] for i in data["top"]} == {opps[0].asin: False, opps[1].asin: True}

@@ -28,6 +28,11 @@ WEIGHTS = {
     "opportunity": 0.12,
 }
 
+SERIOUS_RISK_MARKERS = (
+    "entrenched", "ambiguous", "certification", "IP /", "variations", "holds the buy box",
+    "one brand holds", "big brand", "heavy", "fragile", "restricted", "gated", "low demand", "rated ",
+)
+
 VERDICTS = [(72, "WINNER"), (58, "PROMISING"), (45, "RISKY"), (0, "AVOID")]
 
 HARD_STOP_RISKS = ("prohibited", "hazmat", "MOHAP", "MOCCAE", "food registration", "IP / licensed")
@@ -388,7 +393,7 @@ def score_opportunity(
         "ease": round(ease, 1),
         "opportunity": round(opp, 1),
     }
-    total = sum(components[k] * w for k, w in WEIGHTS.items())
+    total = raw_total = sum(components[k] * w for k, w in WEIGHTS.items())
 
     # Hard stops cap the score: a great-looking product you cannot sell is not a winner.
     if any(any(h in f for h in HARD_STOP_RISKS) for f in flags):
@@ -401,6 +406,12 @@ def score_opportunity(
         total = min(total, 50.0)
     if niche is None:
         total = min(total, 71.0)  # never call it a winner without checking page 1
+    # A WINNER must be clean: each serious risk is a reason a first-time seller can fail.
+    serious = [r for r in set(risks) if any(m in r for m in SERIOUS_RISK_MARKERS)]
+    if len(serious) >= 3:
+        total = min(total, 57.0)
+    elif serious:
+        total = min(total, 71.0)
 
     verdict = next(v for threshold, v in VERDICTS if total >= threshold)
     return Opportunity(
@@ -422,6 +433,7 @@ def score_opportunity(
         niche=niche,
         economics=economics,
         sources=sorted(srcs),
+        raw_score=round(raw_total, 1),
     )
 
 

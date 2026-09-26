@@ -212,3 +212,71 @@ def write_all(opps: list[Opportunity], out_dir: str | Path, meta: dict | None = 
     write_json(opps, paths["json"], meta)
     write_html(opps, paths["html"], meta)
     return paths
+
+
+def _report_files(out_dir: str | Path) -> list[Path]:
+    return sorted(Path(out_dir).glob("hunt-*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+
+
+def summarize_latest(out_dir: str | Path, top: int = 10, verdicts: list[str] | None = None, fmt: str = "md") -> str:
+    """Compact digest of the newest hunt report, for agents and chat delivery.
+
+    Marks products that were not in the previous report as NEW, so a daily
+    message highlights what changed rather than repeating yesterday's list.
+    """
+    files = _report_files(out_dir)
+    if not files:
+        return "No reports found. Run `amzphunt hunt` first."
+    latest = json.loads(files[0].read_text(encoding="utf-8"))
+    previous = {r["asin"] for r in json.loads(files[1].read_text(encoding="utf-8"))["results"]} if len(files) > 1 else set()
+    verdicts = verdicts or ["WINNER", "PROMISING"]
+    rows = [r for r in latest["results"] if r["verdict"] in verdicts][:top]
+    items = []
+    for r in rows:
+        econ = r.get("economics") or {}
+        niche = r.get("niche") or {}
+        items.append(
+            {
+                "asin": r["asin"],
+                "new": bool(previous) and r["asin"] not in previous,
+                "verdict": r["verdict"],
+                "score": r["score"],
+                "title": r["title"][:100],
+                "keyword": r["keyword"],
+                "price_aed": r["price"],
+                "est_monthly_sales": r["est_monthly_sales"],
+                "profit_per_unit_aed": econ.get("profit"),
+                "roi": econ.get("roi"),
+                "niche_median_reviews": niche.get("median_reviews"),
+                "reasons": r["reasons"][:3],
+                "risks": r["risks"][:3],
+                "url": r["url"],
+            }
+        )
+    counts = {v: sum(r["verdict"] == v for r in latest["results"]) for v in VERDICT_COLORS}
+    if fmt == "json":
+        return json.dumps({"report": str(files[0]), "html": str(files[0].with_suffix(".html")),
+                           "generated_at": latest["generated_at"], "counts": counts, "top": items},
+                          indent=2, ensure_ascii=False)
+    lines = [
+        f"# Amazon UAE hunt - {latest['generated_at'][:16].replace('T', ' ')}",
+        f"{counts['WINNER']} winners, {counts['PROMISING']} promising, {counts['RISKY']} risky, {counts['AVOID']} avoid "
+        f"(of {len(latest['results'])} analysed)",
+        "",
+    ]
+    for i, it in enumerate(items, 1):
+        profit = f"AED {it['profit_per_unit_aed']:.0f}/unit" if it["profit_per_unit_aed"] is not None else "profit ?"
+        lines.append(
+            f"{i}. {'[NEW] ' if it['new'] else ''}{it['verdict']} {it['score']:.0f} - {it['keyword']} - "
+            f"AED {it['price_aed'] or 0:.0f}, ~{it['est_monthly_sales'] or '?'}/mo, {profit}"
+        )
+        lines.append(f"   {it['title']}")
+        if it["reasons"]:
+            lines.append(f"   + {'; '.join(it['reasons'])}")
+        if it["risks"]:
+            lines.append(f"   - {'; '.join(it['risks'])}")
+        lines.append(f"   {it['url']}")
+    if not items:
+        lines.append("No products matched the requested verdicts this run.")
+    lines += ["", f"Full report: {files[0].with_suffix('.html')}"]
+    return "\n".join(lines)

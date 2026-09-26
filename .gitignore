@@ -6,3 +6,6 @@ __pycache__/
 .amzphunt_cache/
 amzphunt_history.db
 reports/
+logs/
+settings.json
+.hunt.lock*

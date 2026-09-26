@@ -20,7 +20,7 @@ from .fetcher import Fetcher
 from .history import History
 from .hunter import LIST_SOURCES, Hunter
 from .parsers import parse_dimensions_cm
-from .report import console_table, write_all
+from .report import console_table, summarize_latest, write_all
 
 
 def _progress(quiet: bool):
@@ -52,6 +52,10 @@ def cmd_hunt(args) -> int:
         return 2
     hunter = _build(args)
     opps = hunter.hunt(args.categories, args.depth, args.pages, args.sources, args.deep, args.max_subcategories)
+    if not opps:
+        print(f"No products discovered - amazon.ae is probably blocking this IP. Requests: {hunter.fetcher.stats}",
+              file=sys.stderr)
+        return 4
     if args.only:
         opps = [o for o in opps if o.verdict in args.only]
     print(console_table(opps, args.top))
@@ -66,10 +70,12 @@ def cmd_hunt(args) -> int:
 
 def cmd_niche(args) -> int:
     hunter = _build(args)
+    failures = 0
     for kw in args.keywords:
         n = hunter.niche(kw)
         if not n:
-            print(f"{kw}: no data")
+            print(f"{kw}: no data (request failed or blocked)")
+            failures += 1
             continue
         verdict = "OPEN" if (n.median_reviews or 0) <= hunter.settings.max_median_reviews and n.share_over_1000_reviews < 0.3 else "CROWDED"
         print(f"\n== {kw} ==  [{verdict}]")
@@ -82,15 +88,17 @@ def cmd_niche(args) -> int:
             e = unit_economics(n.median_price, args.category or "", settings=hunter.settings)
             print(f"  at median price: profit AED {e.profit:.2f}/unit, margin {e.margin:.0%}, ROI {e.roi:.0%} "
                   f"(max supplier price for target ROI: AED {max_unit_cost(n.median_price, args.category or '', settings=hunter.settings)})")
-    return 0
+    return 1 if failures == len(args.keywords) else 0
 
 
 def cmd_product(args) -> int:
     hunter = _build(args)
+    failures = 0
     for asin in args.asins:
         o = hunter.evaluate_asin(asin.strip().upper(), args.cost, args.keyword or "")
         if not o:
-            print(f"{asin}: could not fetch")
+            print(f"{asin}: could not fetch (request failed or blocked)")
+            failures += 1
             continue
         d = o.detail
         print(f"\n== {o.asin} :: {o.verdict} ({o.score:.0f}/100) ==")
@@ -107,7 +115,7 @@ def cmd_product(args) -> int:
             print(f"  + {r}")
         for r in o.risks:
             print(f"  - {r}")
-    return 0
+    return 1 if failures == len(args.asins) else 0
 
 
 def cmd_profit(args) -> int:
@@ -126,6 +134,11 @@ def cmd_profit(args) -> int:
     print(f"Profit / unit           : AED {e.profit:.2f}   margin {e.margin:.0%}   ROI {e.roi:.0%}")
     print(f"Max supplier price for {st.min_roi:.0%} ROI & {st.min_margin:.0%} margin: "
           f"AED {max_unit_cost(args.price, args.category or '', dims, args.weight, st)}")
+    return 0
+
+
+def cmd_latest(args) -> int:
+    print(summarize_latest(args.out, args.top, args.only, args.format))
     return 0
 
 
@@ -191,6 +204,13 @@ def build_parser() -> argparse.ArgumentParser:
     f.add_argument("--category", default="")
     f.add_argument("--settings")
     f.set_defaults(func=cmd_profit)
+
+    l = sub.add_parser("latest", help="print a digest of the newest hunt report (for agents/chat)")
+    l.add_argument("-o", "--out", default="reports")
+    l.add_argument("--top", type=int, default=10)
+    l.add_argument("--only", nargs="+", choices=["WINNER", "PROMISING", "RISKY", "AVOID"])
+    l.add_argument("--format", choices=["md", "json"], default="md")
+    l.set_defaults(func=cmd_latest)
 
     c = sub.add_parser("categories", help="list amazon.ae categories and recommendations")
     c.set_defaults(func=cmd_categories)

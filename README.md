@@ -104,6 +104,24 @@ trend data, so products whose BSR keeps improving rise in the rankings.
 The HTML report shows every product's component bars, full fee breakdown, niche statistics,
 *"why it can win"* and *"risks"*.
 
+## Local deployment with an agent (Hermes)
+
+To run this unattended on your own machine with the [Hermes Agent](https://hermes-agent.nousresearch.com),
+give Hermes **[HERMES_DEPLOY.md](HERMES_DEPLOY.md)**. It covers installing the tool, checking that
+live access works, installing the bundled skill (`.hermes/skills/amzphunt/SKILL.md`), running a first
+hunt, and scheduling a daily hunt whose digest is sent to Telegram or another chat.
+
+Helper scripts that also work without Hermes:
+
+```bash
+bash scripts/setup_local.sh          # venv + install + tests + live smoke test
+bash scripts/run_hunt.sh daily       # locked, logged hunt (presets: quick | daily | deep), then prints digest
+amzphunt latest --top 5              # digest of the newest report; [NEW] marks products not in the previous one
+amzphunt latest --format json        # the same digest as JSON, for agents
+```
+
+Exit codes: `0` ok · `1` every fetch failed · `2` bad input or setup · `3` a hunt is already running · `4` nothing found (probably blocked).
+
 ## Scraping notes
 
 - Uses UAE locale and AED currency cookies, rotating browser headers, and random jittered delays.

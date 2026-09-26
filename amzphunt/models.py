@@ -135,6 +135,7 @@ class Opportunity:
     niche: NicheStats | None = None
     economics: Economics | None = None
     sources: list[str] = field(default_factory=list)
+    raw_score: float = 0.0  # before risk caps; breaks ties between capped products
 
     def flat(self) -> dict:
         """One-row summary for CSV export."""

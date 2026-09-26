@@ -214,7 +214,7 @@ class Hunter:
             opps.append(
                 score_opportunity(listing, d, niches.get(kw), self.estimator, self.settings, kw, srcs, trend)
             )
-        opps.sort(key=lambda o: o.score, reverse=True)
+        opps.sort(key=lambda o: (o.score, o.raw_score), reverse=True)
         if self.history:
             self.history.record(opps)
         return opps
